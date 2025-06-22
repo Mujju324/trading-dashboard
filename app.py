@@ -11,31 +11,33 @@ symbol = st.sidebar.text_input("Stock Symbol (e.g. AAPL, RELIANCE.NS)", "AAPL")
 period = st.sidebar.selectbox("Select Period", ["30d", "90d", "180d", "1y", "2y"], index=1)
 
 data = yf.download(symbol, period=period)
-if data.empty:
+
+if data.empty or 'Close' not in data.columns:
     st.error("Invalid symbol or no data available.")
     st.stop()
-if 'Close' not in data.columns or data['Close'].dropna().empty:
+
+# Clean Close data
+close_data = data['Close'].dropna()
+if close_data.empty:
     st.error("Close price data not available.")
     st.stop()
-# Indicators
-data["SMA_20"] = ta.trend.sma_indicator(data['Close'], window=20)
-data["RSI"] = ta.momentum.rsi(data['Close'], window=14)
-macd = ta.trend.macd(data['Close'])
-macd_signal = ta.trend.macd_signal(data['Close'])
-data["MACD"] = macd - macd_signal
 
-# Buy/Sell signal based on RSI
+# Indicators using clean close
+data["SMA_20"] = ta.trend.sma_indicator(close_data, window=20)
+data["RSI"] = ta.momentum.rsi(close_data, window=14)
+data["MACD"] = ta.trend.macd_diff(close_data)
+
+# Buy/Sell Signal
 data["Signal"] = 0
 data.loc[data["RSI"] < 30, "Signal"] = 1
 data.loc[data["RSI"] > 70, "Signal"] = -1
 
-# Candlestick Chart
+# Chart
 fig = go.Figure()
 fig.add_trace(go.Candlestick(x=data.index,
                 open=data['Open'], high=data['High'],
                 low=data['Low'], close=data['Close'],
                 name='Candlestick'))
-
 fig.add_trace(go.Scatter(x=data.index, y=data['SMA_20'], mode='lines', name='SMA 20'))
 
 buy_signals = data[data['Signal'] == 1]
@@ -53,6 +55,6 @@ fig.update_layout(title=f"{symbol} Price Chart with Indicators", xaxis_title="Da
 
 st.plotly_chart(fig, use_container_width=True)
 
-# RSI & MACD Chart
+# RSI & MACD line chart
 st.subheader("RSI & MACD")
 st.line_chart(data[['RSI', 'MACD']])
