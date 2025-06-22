@@ -14,7 +14,9 @@ data = yf.download(symbol, period=period)
 if data.empty:
     st.error("Invalid symbol or no data available.")
     st.stop()
-
+if 'Close' not in data.columns or data['Close'].isnull().all():
+    st.error("Close price data not available.")
+    st.stop()
 # Indicators
 data["SMA_20"] = ta.trend.sma_indicator(data['Close'], window=20)
 data["RSI"] = ta.momentum.rsi(data['Close'], window=14)
