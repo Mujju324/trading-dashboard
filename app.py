@@ -12,7 +12,17 @@ symbol = st.sidebar.text_input("Stock Symbol (e.g. AAPL, RELIANCE.NS)", "AAPL")
 period = st.sidebar.selectbox("Select Period", ["30d", "90d", "180d", "1y", "2y"], index=1)
 
 # Download data
-data = yf.download(symbol, period=period)data = yf.download(symbol, period=period)
+data = yf.download(symbol, period=period)
+
+if data.empty:
+    st.error("No data fetched. Please check the stock symbol.")
+    st.stop()
+
+if 'Close' not in data.columns:
+    st.error("'Close' column not found in data.")
+    st.stop()
+
+data = data.dropna(subset=['Close'])
 
 if data.empty:
     st.error("No data fetched. Please check the stock symbol.")
