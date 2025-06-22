@@ -2,7 +2,8 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import plotly.graph_objs as go
-import ta
+from ta.trend import SMAIndicator, MACD
+from ta.momentum import RSIIndicator
 
 st.set_page_config(page_title="Trading Dashboard", layout="wide")
 
@@ -12,32 +13,29 @@ period = st.sidebar.selectbox("Select Period", ["30d", "90d", "180d", "1y", "2y"
 
 data = yf.download(symbol, period=period)
 
-if data.empty or 'Close' not in data.columns:
-    st.error("Invalid symbol or no data available.")
+if data.empty or 'Close' not in data.columns or data['Close'].dropna().empty:
+    st.error("Invalid symbol or no 'Close' price data available.")
     st.stop()
 
-# Clean Close data
-close_data = data['Close'].dropna()
-if close_data.empty:
-    st.error("Close price data not available.")
-    st.stop()
+# Indicators
+data = data.dropna(subset=['Close'])
+data["SMA_20"] = SMAIndicator(close=data['Close'], window=20).sma_indicator()
+data["RSI"] = RSIIndicator(close=data['Close'], window=14).rsi()
+macd = MACD(close=data['Close'])
+data["MACD"] = macd.macd_diff()
 
-# Indicators using clean close
-data["SMA_20"] = ta.trend.sma_indicator(close_data, window=20)
-data["RSI"] = ta.momentum.rsi(close_data, window=14)
-data["MACD"] = ta.trend.macd_diff(close_data)
-
-# Buy/Sell Signal
+# Buy/Sell signal based on RSI
 data["Signal"] = 0
 data.loc[data["RSI"] < 30, "Signal"] = 1
 data.loc[data["RSI"] > 70, "Signal"] = -1
 
-# Chart
+# Candlestick Chart
 fig = go.Figure()
 fig.add_trace(go.Candlestick(x=data.index,
                 open=data['Open'], high=data['High'],
                 low=data['Low'], close=data['Close'],
                 name='Candlestick'))
+
 fig.add_trace(go.Scatter(x=data.index, y=data['SMA_20'], mode='lines', name='SMA 20'))
 
 buy_signals = data[data['Signal'] == 1]
@@ -55,6 +53,6 @@ fig.update_layout(title=f"{symbol} Price Chart with Indicators", xaxis_title="Da
 
 st.plotly_chart(fig, use_container_width=True)
 
-# RSI & MACD line chart
+# RSI & MACD Chart
 st.subheader("RSI & MACD")
 st.line_chart(data[['RSI', 'MACD']])
