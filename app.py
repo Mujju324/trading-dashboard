@@ -15,14 +15,19 @@ if data.empty:
     st.error("Invalid symbol or no data available.")
     st.stop()
 
+# Indicators
 data["SMA_20"] = ta.trend.sma_indicator(data['Close'], window=20)
 data["RSI"] = ta.momentum.rsi(data['Close'], window=14)
-data["MACD"] = ta.trend.macd_diff(data['Close'])
+macd = ta.trend.macd(data['Close'])
+macd_signal = ta.trend.macd_signal(data['Close'])
+data["MACD"] = macd - macd_signal
 
+# Buy/Sell signal based on RSI
 data["Signal"] = 0
 data.loc[data["RSI"] < 30, "Signal"] = 1
 data.loc[data["RSI"] > 70, "Signal"] = -1
 
+# Candlestick Chart
 fig = go.Figure()
 fig.add_trace(go.Candlestick(x=data.index,
                 open=data['Open'], high=data['High'],
@@ -46,5 +51,6 @@ fig.update_layout(title=f"{symbol} Price Chart with Indicators", xaxis_title="Da
 
 st.plotly_chart(fig, use_container_width=True)
 
+# RSI & MACD Chart
 st.subheader("RSI & MACD")
 st.line_chart(data[['RSI', 'MACD']])
