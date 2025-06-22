@@ -14,6 +14,20 @@ period = st.sidebar.selectbox("Select Period", ["30d", "90d", "180d", "1y", "2y"
 # Download data
 data = yf.download(symbol, period=period)
 
+if data.empty:
+    st.error("❌ No data found. Please check the symbol or period.")
+    st.stop()
+
+if 'Close' not in data.columns:
+    st.error("❌ 'Close' column not found in downloaded data.")
+    st.stop()
+
+data = data.dropna(subset=['Close'])
+
+if data.empty:
+    st.error("❌ All 'Close' values are NaN. Cannot proceed.")
+    st.stop()
+
 # Error-handling
 if data.empty or 'Close' not in data.columns:
     st.error("❌ No 'Close' data found. Check the symbol or try another one.")
